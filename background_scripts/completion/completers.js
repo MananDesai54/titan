@@ -758,7 +758,7 @@ SearchEngineCompleter.debug = false;
 
 // A completer which calls filter() on many completers, aggregates the results, ranks them, and
 // returns the top 10. All queries from the vomnibar come through a multi completer.
-const maxResults = 10;
+const maxResults = 50;
 
 export class MultiCompleter {
   constructor(completers) {

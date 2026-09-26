@@ -45,6 +45,8 @@ ul {
 
 #vomnibar ul {
   border-radius: 0 0 4px 4px;
+  max-height: 350px;
+  overflow-y: auto;
 }
 
 #vomnibar li {

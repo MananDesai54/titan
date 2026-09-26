@@ -2,7 +2,9 @@ const TitanLauncher = {
   activate(sourceFrameId) {
     // Titan's launcher is an Arc-style switcher: selecting anything should preserve
     // the current page and open the destination in a new tab.
-    Vomnibar.activate(sourceFrameId, {newTab: true});
+    // Vomnibar.activate receives a Vimium registry entry, so launcher options must
+    // be nested under `options` for its wrapper to preserve them.
+    Vomnibar.activate(sourceFrameId, {options: {newTab: true}});
   },
 };
 NormalModeCommands['Titan.activate']=TitanLauncher.activate.bind(TitanLauncher);

@@ -25,6 +25,7 @@ On another machine, clone `https://github.com/MananDesai54/titan.git` once the s
 | `/` inside Titan | Pin this page, browse pins/folders, settings, export |
 | `Shift+1` … `Shift+9` | Open/focus the first nine saved pins |
 | `↑` / `↓`, `Enter` | Select and open a result |
+| `→` / `←` | Expand a folder / return to the folder list |
 | `Esc` | Dismiss Titan or link hints |
 | `i` | Enter insert mode to type into a webpage |
 | `Esc` in insert mode | Return to normal mode |

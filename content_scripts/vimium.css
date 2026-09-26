@@ -282,3 +282,17 @@ iframe.vimium-non-clickable {
     color: #8a9096;
   }
 }
+/* Titan's launcher uses Vimium's isolated iframe. */
+iframe.titan-frame {
+  position: fixed !important;
+  top: 8vh !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: min(740px, 96vw) !important;
+  height: min(570px, 86vh) !important;
+  border: 0 !important;
+  border-radius: 20px !important;
+  background: transparent !important;
+  z-index: 2147483647 !important;
+  color-scheme: dark;
+}

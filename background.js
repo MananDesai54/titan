@@ -1,8 +1,23 @@
+import './background_scripts/main.js';
+import {Commands, KeyMappingsParser} from './background_scripts/commands.js';
 import {defaults, validateConfig, safeUrl, destination, rank, shortcutResults} from './core.js';
 const config = async () => validateConfig((await chrome.storage.local.get('config')).config || defaults());
+async function syncNavigation(c) {
+  await Settings.onLoaded();
+  await Settings.setSettings({...Settings.getSettings(), keyMappings:c.navigation.keyMappings,
+    scrollStepSize:c.settings.scrollStep, smoothScroll:c.navigation.smoothScroll,
+    linkHintCharacters:c.navigation.linkHintCharacters, titanVimEnabled:c.settings.vim,
+    newTabDestination:'browserNewTabPage', openVomnibarOnNewTabPage:false,
+    exclusionRules:[], hideUpdateNotifications:true, searchEngines:''});
+  await Commands.loadKeyMappings(c.navigation.keyMappings);
+}
+const ready = config().then(syncNavigation);
 let writes = Promise.resolve();
 function mutate(fn) {
-  const next = writes.then(async () => { const c = await config(); const result = validateConfig(await fn(c)); await chrome.storage.local.set({config: result}); return result; });
+  const next = writes.then(async () => { await ready; const c = await config(); const result = validateConfig(await fn(c));
+    const parsed=KeyMappingsParser.parse(result.navigation.keyMappings);
+    if(parsed.validationErrors.length)throw Error(parsed.validationErrors.join('\n'));
+    await syncNavigation(result); await chrome.storage.local.set({config: result}); return result; });
   writes = next.catch(() => {}); return next;
 }
 async function open(url, newTab = true) {
@@ -27,7 +42,8 @@ async function handle(m, sender) {
     });
     case 'current': { const [tab] = await chrome.tabs.query({active: true, currentWindow: true}); return {name: tab.title, url: tab.url}; }
     case 'search': {
-      const q = String(m.query || '').slice(0, 500);
+      const q = String(m.query || '').trim().slice(0, 500);
+      if (!q) return [];
       const [c, tabs, history, bookmarks] = await Promise.all([config(), chrome.tabs.query({}), chrome.history.search({text: q, startTime: 0, maxResults: 150}), q ? chrome.bookmarks.search(q) : Promise.resolve([])]);
       const items = [...c.pins.map(p => ({...p, kind: 'pin'})), ...tabs.filter(t => safeUrl(t.url)).map(t => ({kind: 'tab', id: t.id, name: t.title || t.url, url: t.url})), ...bookmarks.filter(b => safeUrl(b.url)).map(b => ({kind: 'bookmark', name: b.title || b.url, url: b.url})), ...history.filter(h => safeUrl(h.url)).map(h => ({kind: 'history', name: h.title || h.url, url: h.url}))];
       const seen = new Set(); return rank(items, q).filter(x => { if (seen.has(x.url)) return false; seen.add(x.url); return true; });
@@ -52,7 +68,7 @@ async function handle(m, sender) {
   }
 }
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
-  if (sender.id !== chrome.runtime.id) return;
+  if (sender.id !== chrome.runtime.id || message.handler || !message.type) return;
   handle(message, sender).then(value => reply({ok: true, value}), error => reply({ok: false, error: error.message}));
   return true;
 });

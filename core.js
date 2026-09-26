@@ -1,4 +1,5 @@
-export const defaults = () => ({version: 1, pins: [], folders: [], shortcuts: '', settings: {vim: true, newTab: true, scrollStep: 100}});
+export const navigationDefaults = () => ({keyMappings:'', smoothScroll:true, linkHintCharacters:'sadfjklewcmpgh'});
+export const defaults = () => ({version: 1, pins: [], folders: [], shortcuts: '', navigation:navigationDefaults(), settings: {vim: true, newTab: true, scrollStep: 100}});
 export function parseShortcuts(text = '') {
   if (typeof text !== 'string' || text.length > 200000) throw Error('Shortcuts must be text (maximum 200,000 characters).');
   const aliases = new Set();
@@ -44,7 +45,9 @@ export function validateConfig(data) {
   if (!s || typeof s.vim !== "boolean" || typeof s.newTab !== "boolean" || !Number.isInteger(s.scrollStep) || s.scrollStep < 20 || s.scrollStep > 1000) throw Error("Invalid settings.");
   const shortcuts = data.shortcuts ?? '';
   parseShortcuts(shortcuts);
-  return {version: 1, pins, folders, shortcuts, settings: {vim: s.vim, newTab: s.newTab, scrollStep: s.scrollStep}};
+  const navigation={...navigationDefaults(),...data.navigation};
+  if(typeof navigation.keyMappings !== 'string' || navigation.keyMappings.length>6000 || typeof navigation.smoothScroll !== 'boolean' || typeof navigation.linkHintCharacters !== 'string' || !/^[a-z]{2,26}$/.test(navigation.linkHintCharacters) || new Set(navigation.linkHintCharacters).size!==navigation.linkHintCharacters.length)throw Error('Invalid keyboard settings: use 2–26 unique lowercase hint letters.');
+  return {version: 1, pins, folders, shortcuts, navigation, settings: {vim: s.vim, newTab: s.newTab, scrollStep: s.scrollStep}};
 }
 export function rank(items, query) {
   const q = query.toLowerCase().trim();

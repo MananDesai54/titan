@@ -1,4 +1,13 @@
 class NormalMode extends KeyHandlerMode {
+  onKeydown(event) {
+    if (!Settings.get('titanVimEnabled')) return this.passEventToPage;
+    const result=super.onKeydown(event);
+    if (result===this.continueBubbling && !event.ctrlKey && !event.metaKey && !event.altKey && DomUtils.isEditable(InsertMode.permanentInstance?.getActiveElement())) {
+      if(KeyboardUtils.isEscape(event)) InsertMode.permanentInstance.getActiveElement().blur();
+      if(event.key.length===1 || ['Backspace','Delete','Enter','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return this.suppressEvent;
+    }
+    return result;
+  }
   init(options) {
     if (options == null) {
       options = {};
@@ -208,7 +217,12 @@ const NormalModeCommands = {
   enterInsertMode() {
     // If a focusable element receives the focus, then we exit and leave the permanently-installed
     // insert-mode instance to take over.
-    return new InsertMode({ global: true, exitOnFocus: true });
+    const active=InsertMode.permanentInstance?.getActiveElement();
+    if(!DomUtils.isEditable(active)) {
+      const input=[...document.querySelectorAll('input,textarea,[contenteditable="true"]')].find(node=>DomUtils.isEditable(node) && DomUtils.getVisibleClientRect(node));
+      input?.focus();
+    }
+    return new InsertMode({ global: true, singleton:'titan-insert' });
   },
 
   enterVisualMode() {

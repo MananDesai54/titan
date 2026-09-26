@@ -1,6 +1,7 @@
 (() => {
   const extensionPage = location.protocol === 'chrome-extension:';
   const settingsPage = extensionPage && location.pathname.endsWith('settings.html');
+  const embedded = new URLSearchParams(location.search).has('embedded');
   let host, root, panel, input, list, status, config, rows = [], selected = 0, generation = 0, previousFocus, pendingSearch = Promise.resolve();
   const send = async (type, args = {}) => {
     const result = await chrome.runtime.sendMessage({type, ...args});
@@ -19,6 +20,8 @@
   };
   function report(error) { if (status) status.textContent = error.message || String(error); }
   const css = `
+    .page.embedded{padding:0;min-height:0;background:transparent}.embedded .panel{width:100%;box-shadow:none}
+    .results.search-results{max-height:min(340px,65vh);padding:0 10px}.search-results .row{height:68px;margin:0}
     textarea{display:block;width:100%;min-height:260px;resize:vertical;border:1px solid #51485e;border-radius:8px;background:#14111b;color:#efedf8;padding:14px;font:13px/1.7 monospace;box-sizing:border-box}textarea:focus{outline:2px solid #bca0ec}
     :host{all:initial;color-scheme:dark;font:15px/1.5 system-ui,sans-serif;color:#efedf8}
     *{box-sizing:border-box} .backdrop{position:fixed;inset:0;background:#080710ac;display:flex;justify-content:center;align-items:flex-start;padding:9vh 18px;z-index:2147483647}
@@ -35,7 +38,7 @@
     host.style.cssText = extensionPage ? 'display:block' : 'position:fixed;inset:0;z-index:2147483647;';
     root = host.attachShadow({mode: 'closed'});
     root.append(el('style', css));
-    const backdrop = el('div', undefined, {class: extensionPage ? `page ${location.pathname.endsWith('popup.html') ? 'popup' : ''}` : 'backdrop'});
+    const backdrop = el('div', undefined, {class: extensionPage ? `page ${embedded ? 'embedded' : location.pathname.endsWith('popup.html') ? 'popup' : ''}` : 'backdrop'});
     panel = el('section', undefined, {class: `panel${settingsPage ? ' settings' : ''}`, role: 'dialog', 'aria-label': settingsPage ? 'Titan settings' : 'Titan command bar', 'aria-modal': 'true'});
     backdrop.append(panel); root.append(backdrop); document.documentElement.append(host);
     backdrop.addEventListener('click', e => { if (e.target === backdrop && !extensionPage) close(); });
@@ -52,6 +55,7 @@
   }
   function close() {
     generation++;
+    if(embedded){globalThis.titanHide?.();return;}
     if (extensionPage) { if (location.pathname.endsWith('popup.html')) window.close(); else { input.value = ''; refresh(); input.focus(); } return; }
     host?.remove(); host = null; previousFocus?.focus?.();
   }
@@ -102,8 +106,6 @@
         if (pins.length) next.push(...pins.map(pinRow));
         else next.push({name:folder.name,url:'Empty folder · add pins in Settings',kind:'folder',group:'Folders',action:()=>send('settings')});
       }
-      const recent = await send('search', {query:''});
-      next.push(...recent.filter(r => !c.pins.some(p => p.url === r.url)).slice(0,8).map(r => ({...r,group:'Recent tabs & history'})));
       if (!next.length) status.textContent = 'Your space starts here. Type / to pin a page or create a folder.';
     } else {
       next = await send('search', {query:q});
@@ -112,6 +114,7 @@
       next[next.length-1].subtitle = next[next.length-1].url; delete next[next.length-1].url;
     }
     if (revision !== generation || !host) return;
+    list.classList.toggle('search-results',!!q && !q.startsWith('/'));
     status.textContent=next.length ? '' : (q ? 'No matching shortcuts.' : 'Your space starts here. Type / to pin a page or create a folder.'); render(next);
   }
   function render(next) {
@@ -141,7 +144,11 @@
     }
     const stepLabel=el('label','Scroll distance (20–1000 pixels) '), step=field(config.settings.scrollStep,'Scroll distance'); step.type='number'; step.min='20'; step.max='1000'; step.oninput=()=>config.settings.scrollStep=Number(step.value); stepLabel.append(step); panel.append(stepLabel);
     panel.append(el('p','Shift+T opens Titan. Shift+1–9 opens your first nine pins. j/k/h/l scroll; d/u scroll half a page; gg/G jump to top/bottom; f shows link hints; Shift+F opens hinted links in a new tab; Esc cancels.',{class:'hint'}));
-    panel.append(el('p','Shortcuts leave typing fields alone. On restricted pages or while the address bar has focus, use Alt+T or the Titan toolbar button. Change Alt+T in brave://extensions/shortcuts.',{class:'hint'}));
+    panel.append(el('p','Webpages start in normal mode, even inside textboxes. Press i to type on the page; Esc returns to navigation. Titan’s own search box always accepts typing. Use Alt+T on browser-internal pages or from the address bar.',{class:'hint'}));
+    panel.append(el('h2','Vimium keyboard settings'),el('p','Custom mappings use Vimium syntax, for example: map s scrollDown. Titan.activate opens the launcher; Titan.pin1 through Titan.pin9 open pins. Leave blank for Titan’s defaults.',{class:'hint'}));
+    const mappings=el('textarea',undefined,{'aria-label':'Custom key mappings',rows:'5',spellcheck:'false'});mappings.value=config.navigation.keyMappings;mappings.oninput=()=>config.navigation.keyMappings=mappings.value;
+    const letters=field(config.navigation.linkHintCharacters,'Link hint letters');letters.oninput=()=>config.navigation.linkHintCharacters=letters.value;
+    const smooth=el('label','Smooth scrolling '), smoothCheck=el('input',undefined,{type:'checkbox'});smoothCheck.checked=config.navigation.smoothScroll;smoothCheck.onchange=()=>config.navigation.smoothScroll=smoothCheck.checked;smooth.append(smoothCheck);panel.append(mappings,el('label','Link hint letters'),letters,smooth);
     panel.append(el('p','Titan preserves Brave’s new-tab page. Use Alt+T or the toolbar button there; Brave does not allow webpage shortcuts such as Shift+T on its native new-tab page.',{class:'hint'}));
     panel.append(el('h2','Custom / shortcuts'),el('p','One shortcut per line: name: URL Optional label. These only appear under / in Titan and open the saved URL. No search templates or %s. Blank lines and # comments are allowed.',{class:'hint'}));
     const shortcuts=el('textarea',undefined,{'aria-label':'Custom slash shortcuts',spellcheck:'false',placeholder:'chatgpt: https://chatgpt.com/\nclaude: https://claude.ai/new/\ng!: https://www.google.com/ Google'});
@@ -164,6 +171,6 @@
     panel.append(button('Export saved configuration',async()=>exportConfig(await send('config'))),file);
     const actions=el('div',undefined,{class:'line'});actions.append(button('Save settings',async()=>{config=await send('save',{config});drawSettings();status.textContent='Settings saved.';}),button('Discard changes',async()=>{config=await send('config');drawSettings();}));panel.append(el('h2','Save'),actions,status);
   }
-  globalThis.Titan = {open, send, isOpen:()=>!!host};
+  globalThis.Titan = {open, send, isOpen:()=>!!host, activate:async()=>{await open();input.value='';await refresh();input.focus();}};
   if(extensionPage) { (settingsPage?settings():open()).catch(report); }
 })();

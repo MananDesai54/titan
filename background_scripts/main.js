@@ -630,7 +630,7 @@ const sendRequestHandlers = {
   openUrlInCurrentTab: TabOperations.openUrlInCurrentTab,
   openOptionsPageInNewTab(request) {
     return chrome.tabs.create({
-      url: chrome.runtime.getURL("pages/options.html"),
+      url: chrome.runtime.getURL("settings.html"),
       index: request.tab.index + 1,
     });
   },
@@ -919,7 +919,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     (["chrome_update", "shared_module_update"].includes(details.reason));
   if (shouldInjectContentScripts) injectContentScriptsAndCSSIntoExistingTabs();
 
-  await showUpgradeMessageIfNecessary(details);
+  // Titan uses its own release notes; upstream update notifications are disabled.
 });
 
 // Note that this event is not fired when an incognito profile is started.

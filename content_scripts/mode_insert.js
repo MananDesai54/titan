@@ -34,7 +34,7 @@ class InsertMode extends Mode {
       // See comment here:
       // https://github.com/philc/vimium/commit/48c169bd5a61685bb4e67b1e76c939dbf360a658
       const activeElement = this.getActiveElement();
-      if ((activeElement === document.body) && activeElement.isContentEditable) {
+      if ((activeElement === document.body) && activeElement.isContentEditable && !KeyboardUtils.isEscape(event)) {
         return this.passEventToPage;
       }
 
@@ -74,6 +74,8 @@ class InsertMode extends Mode {
   }
 
   isActive(event) {
+    // Titan requires explicit insert mode on webpages.
+    if (this.permanent && !globalThis.isVimiumUIComponent && location.protocol !== 'chrome-extension:') return false;
     if (event === InsertMode.suppressedEvent) {
       return false;
     }

@@ -12,6 +12,8 @@
 // - topFrame: whether this command must be run only in the top frame of a page.
 //
 const allCommands = [
+  {name:'Titan.activate',desc:'Open Titan: pins, history, tabs and / shortcuts',group:'vomnibar',topFrame:true,noRepeat:true},
+  ...Array.from({length:9},(_,i)=>({name:`Titan.pin${i+1}`,desc:`Open Titan pin ${i+1}`,group:'tabs',noRepeat:true})),
   //
   // Navigation
   //

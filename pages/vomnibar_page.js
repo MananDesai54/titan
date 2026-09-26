@@ -289,6 +289,13 @@ class VomnibarUI {
     //  suggestions are updated asynchronously. Therefore, to avoid a race condition, we construct
     //  the search URL from the actual contents of the input (query).
     if (waitingOnCompletions || this.selection == -1) {
+      // Titan uses an empty query to show saved space items. If the first item is
+      // a folder, Enter should expand it instead of treating the empty query as
+      // a no-op (Vimium normally starts with no selected completion).
+      if (query.length === 0 && this.completions[0]?.titanFolderId) {
+        this.openCompletion(this.completions[0], openInNewTab);
+        return;
+      }
       // <Enter> on an empty query is a no-op.
       if (query.length == 0) return;
 

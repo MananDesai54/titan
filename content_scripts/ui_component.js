@@ -19,6 +19,7 @@ class UIComponent {
   // is visible so we know how to revert focus once it's dismissed.
   focusOptions = {};
   shadowDOM;
+  titanDialog;
   // When we open ports to the iframe using MessageChannel, we save them so that our unit tests can
   // close the ports. See ui_component_test.js for details.
   messageChannelPorts;
@@ -61,7 +62,17 @@ class UIComponent {
     this.shadowDOM.appendChild(styleSheet);
     // Allow a user's custom CSS to style iframe element inside this shadow DOM.
     DomUtils.injectUserCss(this.shadowDOM);
-    this.shadowDOM.appendChild(this.iframeElement);
+    if(className==='titan-frame') {
+      // A native modal makes page composers inert while the isolated launcher
+      // owns focus, including sites which repeatedly call input.focus().
+      this.titanDialog=DomUtils.createElement('dialog');
+      this.titanDialog.className='titan-modal';
+      this.titanDialog.setAttribute('aria-label','Titan launcher');
+      this.titanDialog.appendChild(this.iframeElement);
+      this.shadowDOM.appendChild(this.titanDialog);
+      this.titanDialog.addEventListener('cancel',event=>{event.preventDefault();this.hide();});
+      this.titanDialog.addEventListener('click',event=>{if(event.target===this.titanDialog)this.hide();});
+    } else this.shadowDOM.appendChild(this.iframeElement);
 
     // Load the iframe and pass it a port via window.postMessage so we can communicate privately
     // with the iframe. Use a promise here so that requests to message this iframe's port will
@@ -173,6 +184,7 @@ class UIComponent {
     this.focusOptions = focusOptions;
     await this.postMessage(messageData);
     this.setIframeVisible(true);
+    if(this.titanDialog && !this.titanDialog.open)this.titanDialog.showModal();
     if (this.focusOptions.focus) {
       this.iframeElement.focus();
     }
@@ -185,6 +197,7 @@ class UIComponent {
     await this.iframePort;
     if (!this.showing) return;
     this.showing = false;
+    this.titanDialog?.close();
     this.setIframeVisible(false);
     if (this.focusOptions.focus) {
       this.iframeElement.blur();

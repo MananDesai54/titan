@@ -31,6 +31,12 @@ try {
   await page.getByRole('combobox',{name:'Pin folder',exact:true}).selectOption({label:'Work'});
   await page.getByRole('button',{name:'Save settings',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Settings saved.'}).waitFor();
+  await page.getByRole('textbox',{name:'Custom key mappings'}).fill('map q notACommand');
+  await page.getByRole('button',{name:'Save settings',exact:true}).click();
+  await page.getByRole('status').filter({hasText:'not a valid command'}).waitFor();
+  await page.getByRole('textbox',{name:'Custom key mappings'}).fill('map q scrollDown');
+  await page.getByRole('button',{name:'Save settings',exact:true}).click();
+  await page.getByRole('status').filter({hasText:'Settings saved.'}).waitFor();
   await page.reload();
   assert.equal(await page.getByRole('textbox',{name:'Pin name',exact:true}).inputValue(),'Fixture pin');
   const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export saved configuration'}).click();
@@ -69,12 +75,15 @@ try {
   const fixture=await context.newPage();await fixture.goto(base);
   await fixture.waitForTimeout(600);
   assert.deepEqual(errors,[]);
-  await fixture.keyboard.press('j',{delay:80});await fixture.waitForFunction(()=>scrollY>0);await fixture.waitForTimeout(300);
+  await fixture.keyboard.press('q',{delay:80});await fixture.waitForFunction(()=>scrollY>0);await fixture.waitForTimeout(300);
   await fixture.keyboard.press('g');await fixture.keyboard.press('g');await fixture.waitForFunction(()=>scrollY===0);
   const field=fixture.getByRole('textbox',{name:'Typing test'});
   await field.focus();await fixture.keyboard.press('Shift+T');assert.equal(await field.inputValue(),'');
   const launcher=fixture.frameLocator('iframe.titan-frame'), launcherSearch=launcher.getByRole('combobox',{name:'Search Titan'});
   await launcherSearch.waitFor();await fixture.keyboard.type('launcher typing');assert.equal(await launcherSearch.inputValue(),'launcher typing');assert.equal(await field.inputValue(),'');
+  await fixture.evaluate(()=>document.querySelector('input').focus());
+  await fixture.keyboard.type(' retained');
+  assert.equal(await launcherSearch.inputValue(),'launcher typing retained','Page autofocus must not steal launcher typing');
   await fixture.keyboard.press('Escape');await fixture.locator('iframe.titan-frame').waitFor({state:'hidden'});
   await field.focus();await fixture.keyboard.type('abc');assert.equal(await field.inputValue(),'');
   await fixture.keyboard.press('i');await fixture.keyboard.type('hello');assert.equal(await field.inputValue(),'hello');
@@ -84,7 +93,7 @@ try {
   await fixture.locator('.vimiumHintMarker').first().waitFor();
   const hint=await fixture.locator('.vimiumHintMarker').first().innerText();await fixture.keyboard.type(hint.toLowerCase());await fixture.waitForURL(`${base}/destination`);
   await fixture.waitForTimeout(400);await fixture.keyboard.press('Shift+T');await launcherSearch.waitFor();await launcherSearch.fill('/pin');await launcher.getByRole('option').filter({hasText:'Pin this page'}).waitFor();await launcherSearch.press('Enter');
-  await page.waitForFunction(async()=> (await chrome.storage.local.get('config')).config.pins.length===2);
+  await launcher.getByRole('status').filter({hasText:'Page pinned.'}).waitFor();
   const afterPin=await worker.evaluate(async()=> (await chrome.storage.local.get('config')).config);
   assert.equal(afterPin.pins.length,2);
   await fixture.keyboard.press('Escape');

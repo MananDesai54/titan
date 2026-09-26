@@ -1,6 +1,6 @@
 class NormalMode extends KeyHandlerMode {
   onKeydown(event) {
-    if (!Settings.get('titanVimEnabled')) return this.passEventToPage;
+    if (Settings.get('titanVimEnabled') === false) return this.passEventToPage;
     const result=super.onKeydown(event);
     if (result===this.continueBubbling && !event.ctrlKey && !event.metaKey && !event.altKey && DomUtils.isEditable(InsertMode.permanentInstance?.getActiveElement())) {
       if(KeyboardUtils.isEscape(event)) InsertMode.permanentInstance.getActiveElement().blur();

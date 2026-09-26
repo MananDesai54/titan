@@ -10,3 +10,12 @@ in `CREDITS`. Titan's manifest and product README replace the upstream versions.
 Titan-specific changes are documented in its Git commits. The earlier standalone
 implementation, including its unfinished focus fixes, is preserved on the local
 `backup/titan-standalone` branch.
+
+Runtime customizations:
+
+- `background.js` loads Vimium's worker and bridges Titan configuration into the engine.
+- `content_scripts/titan.js` installs Titan's launcher and pin commands using Vimium's mode stack.
+- `UIComponent` hosts Titan in an authenticated extension iframe inside a native modal.
+- Explicit insert mode replaces automatic insert-on-focus for website textboxes.
+- Titan's settings and launcher replace the upstream popup/options entry points and default split launcher bindings. Legacy source files remain for upstream tests and custom command compatibility.
+- Upstream new-tab navigation and update notifications are disabled; Brave's native new-tab page is preserved.

@@ -1,5 +1,5 @@
-import {defaults, validateConfig, safeUrl, destination, rank} from './core.js';
-const config = async () => (await chrome.storage.local.get('config')).config || defaults();
+import {defaults, validateConfig, safeUrl, destination, rank, shortcutResults} from './core.js';
+const config = async () => validateConfig((await chrome.storage.local.get('config')).config || defaults());
 let writes = Promise.resolve();
 function mutate(fn) {
   const next = writes.then(async () => { const c = await config(); const result = validateConfig(await fn(c)); await chrome.storage.local.set({config: result}); return result; });
@@ -18,6 +18,7 @@ async function activate(id) {
 async function handle(m, sender) {
   switch (m.type) {
     case 'config': return config();
+    case 'shortcuts': return shortcutResults((await config()).shortcuts, String(m.query || ''));
     case 'save': return mutate(() => validateConfig(m.config));
     case 'pin': return mutate(c => {
       if (!safeUrl(m.url)) throw Error('This page cannot be pinned.');

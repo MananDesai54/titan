@@ -1,13 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Titan",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Your keyboard-first home for tabs, history, pins and folders.",
   "permissions": ["storage", "tabs", "history", "bookmarks", "search"],
   "background": {"service_worker": "background.js", "type": "module"},
   "action": {"default_title": "Open Titan", "default_popup": "popup.html"},
   "commands": {"_execute_action": {"suggested_key": {"default": "Alt+T"}}},
   "options_page": "settings.html",
-  "chrome_url_overrides": {"newtab": "newtab.html"},
   "content_scripts": [{"matches": ["http://*/*", "https://*/*"], "js": ["ui.js", "navigation.js"], "run_at": "document_idle"}]
 }

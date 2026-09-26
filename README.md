@@ -8,7 +8,7 @@ A keyboard-first Brave extension inspired by Arc and Vimium. No build step, acco
 2. Turn on **Developer mode** (top right).
 3. Click **Load unpacked** and select `/home/manan/programming/projects/titan` (the folder containing `manifest.json`).
 4. Pin Titan from the extensions menu if you want its toolbar button.
-5. Refresh existing website tabs. Open a new tab and accept/keep Titan as the new-tab page if Brave prompts you.
+5. Refresh existing website tabs. Titan preserves Brave's native new-tab page. If upgrading from 0.1.0, reload Titan and close any old Titan new-tab pages; newly opened tabs use Brave's page.
 
 On another machine, clone `https://github.com/MananDesai54/titan.git` once the source is published, then load that directory unpacked.
 
@@ -31,6 +31,22 @@ Type to search pins, open tabs, bookmarks and browser history, including older h
 
 Open **Settings** from Titan or the extension's **Details → Extension options**. All preferences, folders, pin names/URLs/order and JSON backup/restore are on this one page. Save applies the draft; Discard reloads the saved configuration. Deleting a folder moves its pins out of the folder. Export downloads the saved configuration; import validates a file and loads it as a draft, then Save applies it. Keep a backup before replacing existing configuration.
 
+### Custom slash shortcuts
+
+Paste direct shortcuts into **Settings → Custom / shortcuts**, then **Save settings**:
+
+```text
+w!: https://www.wikipedia.org/ Wikipedia
+g!: https://www.google.com/ Google
+y!: https://www.youtube.com/ YouTube
+chatgpt: https://chatgpt.com/
+claude: https://claude.ai/new/
+```
+
+Use the same `name: URL Optional label` format for your own environments and dashboards. Blank lines and `#` comments are allowed. Names are case-insensitive and must be unique. No `%s` templates: each shortcut opens exactly its saved URL. Query parameters in URLs are preserved.
+
+Type `/` in Titan to see these alongside built-in commands, or filter with `/claude`, `/g!`, etc. Custom shortcuts are only matched under `/`; plain text still searches tabs, pins, history, bookmarks and the web. Shortcuts are included in JSON export/import. Older backups without shortcuts remain compatible.
+
 ## Try it out
 
 1. Visit several sites, then refresh one and press `Shift+T`. Search for a visited page's title: a history result should appear. Search for an open tab and press Enter: Titan should focus it.
@@ -47,7 +63,7 @@ Open **Settings** from Titan or the extension's **Details → Extension options*
 - Shift-only bindings are webpage shortcuts and cannot intercept keys in Brave's address bar, browser settings, Web Store, built-in PDF viewer, or other extensions. Use `Alt+T` or the toolbar button there. Reassign Alt+T at `brave://extensions/shortcuts` if it conflicts.
 - Vim shortcuts deliberately do not run in typing fields. They operate in the main webpage; nested frames and controls inside website shadow roots are not covered in this first version. Sites that intercept keyboard events before Titan may interfere.
 - Pins are saved website shortcuts, not Brave's native pinned tabs. Folders organize pins with one level of nesting. This is an Arc-inspired launcher, not a replacement for Brave's tab strip.
-- The extension replaces Brave's new-tab page. To undo that, disable Titan. Search history stays in Brave; Titan only reads it for local suggestions and does not export it.
+- The extension does not replace Brave's new-tab page. `Shift+T` cannot work on Brave's native new-tab page because extensions cannot inject there and browser-wide extension commands require Ctrl or Alt. Use `Alt+T` or the toolbar button there. Search history stays in Brave; Titan only reads it for local suggestions and does not export it.
 - Storage is local to this browser profile; use export/import to move your configuration. No telemetry or remote suggestion service. URLs are opened only when selected.
 - Reload the extension in `brave://extensions` after editing its files, then refresh existing website tabs.
 

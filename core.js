@@ -1,4 +1,25 @@
-export const defaults = () => ({version: 1, pins: [], folders: [], settings: {vim: true, newTab: true, scrollStep: 100}});
+export const defaults = () => ({version: 1, pins: [], folders: [], shortcuts: '', settings: {vim: true, newTab: true, scrollStep: 100}});
+export function parseShortcuts(text = '') {
+  if (typeof text !== 'string' || text.length > 200000) throw Error('Shortcuts must be text (maximum 200,000 characters).');
+  const aliases = new Set();
+  return text.split(/\r?\n/).flatMap((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return [];
+    const match = trimmed.match(/^([a-z0-9_!-]+):\s*(\S+)(?:\s+(.+))?$/i);
+    if (!match || !safeUrl(match[2])) throw Error(`Shortcut line ${index + 1}: use name: https://example.com/ Optional label`);
+    const [, alias, url, label] = match;
+    if (url.includes('%s')) throw Error(`Shortcut line ${index + 1}: use a direct URL without %s.`);
+    if (aliases.has(alias.toLowerCase())) throw Error(`Shortcut line ${index + 1}: duplicate name ${alias}.`);
+    aliases.add(alias.toLowerCase());
+    return [{alias, name: label || alias, url: safeUrl(url), kind: 'shortcut'}];
+  });
+}
+export function shortcutResults(text, query) {
+  if (!query.startsWith('/')) return [];
+  const q = query.slice(1).trim().toLowerCase();
+  return parseShortcuts(text).filter(x => `${x.alias} ${x.name} ${x.url}`.toLowerCase().includes(q))
+    .sort((a,b) => Number(b.alias.toLowerCase() === q) - Number(a.alias.toLowerCase() === q));
+}
 export function safeUrl(value) {
   try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) ? url.href : null; } catch { return null; }
 }
@@ -21,7 +42,9 @@ export function validateConfig(data) {
   });
   const s = data.settings;
   if (!s || typeof s.vim !== "boolean" || typeof s.newTab !== "boolean" || !Number.isInteger(s.scrollStep) || s.scrollStep < 20 || s.scrollStep > 1000) throw Error("Invalid settings.");
-  return {version: 1, pins, folders, settings: {vim: s.vim, newTab: s.newTab, scrollStep: s.scrollStep}};
+  const shortcuts = data.shortcuts ?? '';
+  parseShortcuts(shortcuts);
+  return {version: 1, pins, folders, shortcuts, settings: {vim: s.vim, newTab: s.newTab, scrollStep: s.scrollStep}};
 }
 export function rank(items, query) {
   const q = query.toLowerCase().trim();

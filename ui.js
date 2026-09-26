@@ -19,6 +19,7 @@
   };
   function report(error) { if (status) status.textContent = error.message || String(error); }
   const css = `
+    textarea{display:block;width:100%;min-height:260px;resize:vertical;border:1px solid #51485e;border-radius:8px;background:#14111b;color:#efedf8;padding:14px;font:13px/1.7 monospace;box-sizing:border-box}textarea:focus{outline:2px solid #bca0ec}
     :host{all:initial;color-scheme:dark;font:15px/1.5 system-ui,sans-serif;color:#efedf8}
     *{box-sizing:border-box} .backdrop{position:fixed;inset:0;background:#080710ac;display:flex;justify-content:center;align-items:flex-start;padding:9vh 18px;z-index:2147483647}
     .page{min-height:100vh;padding:7vh 18px;background:radial-gradient(ellipse at top,#32283c,#111018 65%);display:flex;justify-content:center}
@@ -66,7 +67,7 @@
     input.addEventListener('keydown', e => {
       if (['ArrowDown','ArrowUp'].includes(e.key)) { e.preventDefault(); selected = (selected + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % (rows.length || 1); highlight(); }
       if (e.key === 'Enter') { e.preventDefault(); const query=input.value; pendingSearch.then(()=>{if(host && input.value===query)run(rows[selected]);}); }
-      if (e.shiftKey && /^Digit[1-9]$/.test(e.code) && !e.ctrlKey && !e.altKey && !e.metaKey) { e.preventDefault(); send('number', {index:Number(e.code.slice(-1))-1}).then(close).catch(report); }
+      if (!input.value && e.shiftKey && /^Digit[1-9]$/.test(e.code) && !e.ctrlKey && !e.altKey && !e.metaKey) { e.preventDefault(); send('number', {index:Number(e.code.slice(-1))-1}).then(close).catch(report); }
     });
     input.focus();
     pendingSearch=refresh().catch(report); await pendingSearch;
@@ -91,6 +92,8 @@
         ...c.pins.map((p,i) => ({...p, kind:'pin', label:i < 9 ? `⇧${i+1}` : 'pin'})),
         ...c.folders.map(f => ({name:f.name, url:'Browse folder', kind:'folder', action:() => { input.value=''; render(c.pins.filter(p => p.folder === f.id).map(p => ({...p,kind:'pin'}))); }}))
       ].filter(r => r.name.toLowerCase().includes(q.slice(1).toLowerCase()));
+      const shortcuts = await send('shortcuts', {query:q});
+      next.unshift(...shortcuts.map(s=>({...s, name:`/${s.alias}${s.name !== s.alias ? ` · ${s.name}` : ''}`})));
     } else if (!q) {
       const pinRow = p => {const i=c.pins.findIndex(x=>x.id===p.id);return {...p,kind:'pin',label:i<9?`⇧${i+1}`:'pin',group:c.folders.find(f=>f.id===p.folder)?.name || 'Pinned'};};
       next = c.pins.filter(p=>!p.folder).map(pinRow);
@@ -139,6 +142,10 @@
     const stepLabel=el('label','Scroll distance (20–1000 pixels) '), step=field(config.settings.scrollStep,'Scroll distance'); step.type='number'; step.min='20'; step.max='1000'; step.oninput=()=>config.settings.scrollStep=Number(step.value); stepLabel.append(step); panel.append(stepLabel);
     panel.append(el('p','Shift+T opens Titan. Shift+1–9 opens your first nine pins. j/k/h/l scroll; d/u scroll half a page; gg/G jump to top/bottom; f shows link hints; Shift+F opens hinted links in a new tab; Esc cancels.',{class:'hint'}));
     panel.append(el('p','Shortcuts leave typing fields alone. On restricted pages or while the address bar has focus, use Alt+T or the Titan toolbar button. Change Alt+T in brave://extensions/shortcuts.',{class:'hint'}));
+    panel.append(el('p','Titan preserves Brave’s new-tab page. Use Alt+T or the toolbar button there; Brave does not allow webpage shortcuts such as Shift+T on its native new-tab page.',{class:'hint'}));
+    panel.append(el('h2','Custom / shortcuts'),el('p','One shortcut per line: name: URL Optional label. These only appear under / in Titan and open the saved URL. No search templates or %s. Blank lines and # comments are allowed.',{class:'hint'}));
+    const shortcuts=el('textarea',undefined,{'aria-label':'Custom slash shortcuts',spellcheck:'false',placeholder:'chatgpt: https://chatgpt.com/\nclaude: https://claude.ai/new/\ng!: https://www.google.com/ Google'});
+    shortcuts.value=config.shortcuts || '';shortcuts.oninput=()=>config.shortcuts=shortcuts.value;panel.append(shortcuts);
     panel.append(el('h2','Folders'));
     config.folders.forEach(f=>{const line=el('div',undefined,{class:'line'}), name=field(f.name,'Folder name'); name.oninput=()=>f.name=name.value; line.append(name,button('Delete',()=>{config.folders=config.folders.filter(x=>x.id!==f.id); config.pins.forEach(p=>{if(p.folder===f.id)p.folder='';});drawSettings();}));panel.append(line);});
     panel.append(button('+ Add folder',()=>{config.folders.push({id:crypto.randomUUID(),name:'New folder'});drawSettings();}));
@@ -151,7 +158,7 @@
       line.append(el('span',i<9?`⇧${i+1}`:`${i+1}`),name,url,folder,button('↑',()=>move(-1)),button('↓',()=>move(1)),button('Remove',()=>{config.pins.splice(i,1);drawSettings();}));panel.append(line);
     });
     panel.append(button('+ Add pin',()=>{config.pins.push({id:crypto.randomUUID(),name:'New pin',url:'https://',folder:''});drawSettings();}));
-    panel.append(el('h2','Backup & restore'),el('p','Export includes saved pins, folders and preferences. It does not include your browsing history. Import replaces this page’s draft; review it and Save settings to apply.',{class:'hint'}));
+    panel.append(el('h2','Backup & restore'),el('p','Export includes saved shortcuts, pins, folders and preferences. It does not include your browsing history. Import replaces this page’s draft; review it and Save settings to apply.',{class:'hint'}));
     const file=el('input',undefined,{type:'file',accept:'.json,application/json','aria-label':'Import Titan configuration'});
     file.onchange=async()=>{try{const chosen=file.files[0];if(!chosen)return;if(chosen.size>2_000_000)throw Error('Configuration file is too large.');const data=JSON.parse(await chosen.text());const {validateConfig}=await import(chrome.runtime.getURL('core.js'));config=validateConfig(data);drawSettings();status.textContent='Imported into draft. Review and Save settings to apply.';}catch(e){report(e);}};
     panel.append(button('Export saved configuration',async()=>exportConfig(await send('config'))),file);

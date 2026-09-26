@@ -20,6 +20,7 @@ try {
   // Open shadows only in extension-page tests to inspect controls; shipped UI stays closed.
   await page.addInitScript(()=>{const original=Element.prototype.attachShadow;Element.prototype.attachShadow=function(options){return original.call(this,{...options,mode:'open'});};});
   await page.goto(`chrome-extension://${id}/settings.html`);
+  await page.getByRole('textbox',{name:'Custom slash shortcuts'}).fill(`fixture: ${base}/shortcut Fixture shortcut\ng!: ${base}/bang Google\nfixture_long: ${base}/long`);
   await page.getByRole('button',{name:'+ Add folder',exact:true}).click();
   await page.getByRole('textbox',{name:'Folder name',exact:true}).fill('Work');
   await page.getByRole('button',{name:'+ Add pin',exact:true}).click();
@@ -40,8 +41,16 @@ try {
   await page.getByRole('button',{name:'Save settings',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Settings saved.'}).waitFor();
   await worker.evaluate(async(base)=>{await chrome.history.addUrl({url:`${base}/old-history`});await chrome.bookmarks.create({title:'Fixture bookmark',url:`${base}/bookmarked`});},base);
-  await page.goto(`chrome-extension://${id}/newtab.html`);
+  await page.goto('chrome://newtab/');
+  assert.ok(!page.url().startsWith(`chrome-extension://${id}/`));
+  await page.goto(`chrome-extension://${id}/launcher.html`);
   const search=page.getByRole('combobox',{name:'Search Titan',exact:true});
+  await search.fill('/fixture');await page.getByRole('option').filter({hasText:'/fixture · Fixture shortcut'}).waitFor();
+  await search.fill('Fixture shortcut');await page.getByRole('option').filter({hasText:'Search or open'}).waitFor();
+  assert.equal(await page.getByRole('option').filter({hasText:'/fixture'}).count(),0);
+  await search.fill('/g');await search.press('!');assert.equal(await search.inputValue(),'/g!');
+  await page.getByRole('option').filter({hasText:'/g! · Google'}).waitFor();
+  await search.fill('');
   await page.getByRole('option').filter({hasText:'Fixture pin'}).waitFor();
   await search.fill('old-history');await page.getByRole('option').filter({hasText:'history'}).first().waitFor();
   assert.match(await page.locator('.results').innerText(),/old-history/);

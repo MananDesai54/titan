@@ -1,6 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {defaults, validateConfig, destination, safeUrl, rank} from '../core.js';
+import {defaults, validateConfig, destination, safeUrl, rank, parseShortcuts, shortcutResults} from '../core.js';
+
+test('direct slash shortcuts support labels, punctuation, comments and query parameters', () => {
+  const text='# Work\ng!: https://google.com/ Google\n\nstaging_grafana: https://example.com/?client_id=abc%3Adef&state=x Grafana';
+  assert.equal(parseShortcuts(text).length,2);
+  assert.equal(shortcutResults(text,'/g!')[0].name,'Google');
+  assert.equal(shortcutResults(text,'/staging_grafana')[0].url,'https://example.com/?client_id=abc%3Adef&state=x');
+  assert.deepEqual(shortcutResults(text,'staging_grafana'),[]);
+  assert.equal(shortcutResults(text,'/').length,2);
+});
+test('shortcut validation rejects malformed lines, duplicates, unsafe URLs and templates', () => {
+  for(const text of ['bad line','x: javascript:alert(1)','g: https://google.com/?q=%s','x: https://a.com\nX: https://b.com']) assert.throws(()=>parseShortcuts(text));
+  assert.throws(()=>parseShortcuts({}));
+});
+test('older backups gain empty shortcuts; new shortcuts round trip without changing pins', () => {
+  const old=defaults(); delete old.shortcuts;
+  assert.equal(validateConfig(old).shortcuts,'');
+  const c=defaults();c.shortcuts='claude: https://claude.ai/new/';
+  assert.deepEqual(validateConfig(JSON.parse(JSON.stringify(c))),c);
+});
 
 test('URL detection keeps search text separate and rejects executable schemes', () => {
   assert.equal(destination('github.com/MananDesai54/titan'), 'https://github.com/MananDesai54/titan');

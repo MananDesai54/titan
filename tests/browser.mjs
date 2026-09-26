@@ -40,7 +40,7 @@ try {
   await page.getByRole('status').filter({hasText:'Imported into draft'}).waitFor();
   await page.getByRole('button',{name:'Save settings',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Settings saved.'}).waitFor();
-  await worker.evaluate(async(base)=>{await chrome.history.addUrl({url:`${base}/old-history`});await chrome.bookmarks.create({title:'Fixture bookmark',url:`${base}/bookmarked`});},base);
+  await worker.evaluate(async(base)=>{await chrome.history.addUrl({url:`${base}/old-history`});for(let i=0;i<12;i++)await chrome.history.addUrl({url:`${base}/history-scroll-${i}`});await chrome.bookmarks.create({title:'Fixture bookmark',url:`${base}/bookmarked`});},base);
   await page.goto('chrome://newtab/');
   assert.ok(!page.url().startsWith(`chrome-extension://${id}/`));
   await page.goto(`chrome-extension://${id}/launcher.html`);
@@ -52,6 +52,13 @@ try {
   await page.getByRole('option').filter({hasText:'/g! · Google'}).waitFor();
   await search.fill('');
   await page.getByRole('option').filter({hasText:'Fixture pin'}).waitFor();
+  assert.doesNotMatch(await page.locator('.results').innerText(),/history|Recent tabs/);
+  assert.deepEqual(await page.evaluate(async()=> (await chrome.runtime.sendMessage({type:'search',query:''})).value),[]);
+  await search.fill('history-scroll');await page.waitForFunction(()=>document.querySelector('div').shadowRoot.querySelectorAll('.row').length===13);
+  const dimensions=await page.locator('.results').evaluate(node=>{const box=node.getBoundingClientRect();return {visible:[...node.querySelectorAll('.row')].filter(row=>{const r=row.getBoundingClientRect();return r.top>=box.top && r.bottom<=box.bottom+1;}).length,scrollable:node.scrollHeight>node.clientHeight};});
+  assert.equal(dimensions.visible,5);assert.equal(dimensions.scrollable,true);
+  await search.press('ArrowDown');await search.press('ArrowDown');await search.press('ArrowDown');await search.press('ArrowDown');await search.press('ArrowDown');
+  assert.ok(await page.locator('.results').evaluate(node=>node.scrollTop>0));
   await search.fill('old-history');await page.getByRole('option').filter({hasText:'history'}).first().waitFor();
   assert.match(await page.locator('.results').innerText(),/old-history/);
   await search.fill('Fixture bookmark');await page.getByRole('option').filter({hasText:'Fixture bookmark'}).first().waitFor();
@@ -61,7 +68,35 @@ try {
   await fixture.waitForTimeout(600);
   await fixture.keyboard.press('j');await fixture.waitForFunction(()=>scrollY>0);
   await fixture.keyboard.press('g');await fixture.keyboard.press('g');await fixture.waitForFunction(()=>scrollY===0);
-  await fixture.getByRole('textbox',{name:'Typing test'}).focus();await fixture.keyboard.press('Shift+T');assert.equal(await fixture.getByRole('textbox').inputValue(),'T');
+  const field=fixture.getByRole('textbox',{name:'Typing test'});
+  await field.focus();await fixture.keyboard.press('Shift+T');
+  assert.equal(await field.inputValue(),'','Normal mode must open Titan from a focused textbox instead of typing T');
+  await fixture.keyboard.press('Escape');
+  await fixture.waitForTimeout(100);
+  await field.focus();await fixture.keyboard.type('xyz');assert.equal(await field.inputValue(),'');
+  await fixture.evaluate(()=>{window.keyTrace=[];for(const type of ['keydown','keypress','beforeinput','input'])document.addEventListener(type,e=>window.keyTrace.push({type,key:e.key,data:e.data,prevented:e.defaultPrevented,target:e.target.tagName}),true);});
+  await fixture.keyboard.press('i');assert.deepEqual(errors,[]);await fixture.keyboard.type('hello');
+  if(await field.inputValue()!=='hello'){
+    const debug=await context.newCDPSession(fixture);const doc=await debug.send('DOM.getDocument',{depth:-1,pierce:true});
+    const values=[];const walk=n=>{if(n.nodeName==='INPUT'||n.nodeName==='DIALOG'||n.nodeName==='#text')values.push({name:n.nodeName,attrs:n.attributes,text:n.nodeValue});for(const child of [...(n.children||[]),...(n.shadowRoots||[])])walk(child);};walk(doc.root);
+    console.log('[DEBUG-focus]',JSON.stringify({active:await fixture.evaluate(()=>({html:document.activeElement.outerHTML,focused:document.hasFocus(),trace:window.keyTrace})),values}));
+  }
+  assert.equal(await field.inputValue(),'hello');
+  await fixture.keyboard.press('Escape');await field.focus();await fixture.keyboard.press('j');assert.equal(await field.inputValue(),'hello');
+  await fixture.keyboard.press('g');await fixture.keyboard.press('g');
+  // Simulate a site that refocuses its composer and captures document keydown.
+  await fixture.evaluate(()=>{window.stolenKeys=0;document.addEventListener('keydown',()=>window.stolenKeys++,true);window.focusTimer=setInterval(()=>document.querySelector('input').focus({preventScroll:true}),20);});
+  await fixture.keyboard.press('Shift+T');await fixture.waitForTimeout(100);
+  await fixture.keyboard.type('launcher typing');await fixture.waitForTimeout(100);
+  assert.equal(await field.inputValue(),'hello');assert.equal(await fixture.evaluate(()=>window.stolenKeys),0);
+  const cdp=await context.newCDPSession(fixture);
+  const tree=await cdp.send('DOM.getDocument',{depth:-1,pierce:true});
+  const findSearch=node=>{if(node.attributes?.includes('Search Titan'))return node;for(const child of [...(node.children||[]),...(node.shadowRoots||[])]){const found=findSearch(child);if(found)return found;}};
+  const node=findSearch(tree.root);assert.ok(node,'Titan search exists inside its closed shadow root');
+  const {object}=await cdp.send('DOM.resolveNode',{nodeId:node.nodeId});
+  const result=await cdp.send('Runtime.callFunctionOn',{objectId:object.objectId,functionDeclaration:'function(){return this.value}',returnByValue:true});
+  assert.equal(result.result.value,'launcher typing');
+  await fixture.evaluate(()=>clearInterval(window.focusTimer));await fixture.keyboard.press('Escape');
   await fixture.getByRole('heading').click();await fixture.keyboard.press('f');await fixture.keyboard.press('a');await fixture.waitForURL(`${base}/destination`);
   await fixture.waitForTimeout(400);await fixture.keyboard.press('Shift+T');await fixture.keyboard.type('/pin');await fixture.waitForTimeout(300);await fixture.keyboard.press('Enter');
   await page.waitForTimeout(400);

@@ -27,7 +27,8 @@ async function handle(m, sender) {
     });
     case 'current': { const [tab] = await chrome.tabs.query({active: true, currentWindow: true}); return {name: tab.title, url: tab.url}; }
     case 'search': {
-      const q = String(m.query || '').slice(0, 500);
+      const q = String(m.query || '').trim().slice(0, 500);
+      if (!q) return [];
       const [c, tabs, history, bookmarks] = await Promise.all([config(), chrome.tabs.query({}), chrome.history.search({text: q, startTime: 0, maxResults: 150}), q ? chrome.bookmarks.search(q) : Promise.resolve([])]);
       const items = [...c.pins.map(p => ({...p, kind: 'pin'})), ...tabs.filter(t => safeUrl(t.url)).map(t => ({kind: 'tab', id: t.id, name: t.title || t.url, url: t.url})), ...bookmarks.filter(b => safeUrl(b.url)).map(b => ({kind: 'bookmark', name: b.title || b.url, url: b.url})), ...history.filter(h => safeUrl(h.url)).map(h => ({kind: 'history', name: h.title || h.url, url: h.url}))];
       const seen = new Set(); return rank(items, q).filter(x => { if (seen.has(x.url)) return false; seen.add(x.url); return true; });

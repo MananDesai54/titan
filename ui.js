@@ -1,7 +1,7 @@
 (() => {
   const extensionPage = location.protocol === 'chrome-extension:';
   const settingsPage = extensionPage && location.pathname.endsWith('settings.html');
-  let host, root, panel, input, list, status, config, rows = [], selected = 0, generation = 0, previousFocus, pendingSearch = Promise.resolve();
+  let host, root, panel, input, list, status, config, modal, rows = [], selected = 0, generation = 0, previousFocus, pendingSearch = Promise.resolve();
   const send = async (type, args = {}) => {
     const result = await chrome.runtime.sendMessage({type, ...args});
     if (!result?.ok) throw Error(result?.error || 'Titan is unavailable. Reload this page after updating the extension.');
@@ -19,6 +19,8 @@
   };
   function report(error) { if (status) status.textContent = error.message || String(error); }
   const css = `
+    dialog{position:fixed;inset:0;margin:0;width:100vw;height:100vh;max-width:none;max-height:none;padding:0;border:0;background:transparent;color:inherit}dialog::backdrop{background:transparent}
+    .results.search-results{max-height:min(340px,52vh);padding:0 10px}.search-results .row{height:68px;margin:0}
     textarea{display:block;width:100%;min-height:260px;resize:vertical;border:1px solid #51485e;border-radius:8px;background:#14111b;color:#efedf8;padding:14px;font:13px/1.7 monospace;box-sizing:border-box}textarea:focus{outline:2px solid #bca0ec}
     :host{all:initial;color-scheme:dark;font:15px/1.5 system-ui,sans-serif;color:#efedf8}
     *{box-sizing:border-box} .backdrop{position:fixed;inset:0;background:#080710ac;display:flex;justify-content:center;align-items:flex-start;padding:9vh 18px;z-index:2147483647}
@@ -37,7 +39,11 @@
     root.append(el('style', css));
     const backdrop = el('div', undefined, {class: extensionPage ? `page ${location.pathname.endsWith('popup.html') ? 'popup' : ''}` : 'backdrop'});
     panel = el('section', undefined, {class: `panel${settingsPage ? ' settings' : ''}`, role: 'dialog', 'aria-label': settingsPage ? 'Titan settings' : 'Titan command bar', 'aria-modal': 'true'});
-    backdrop.append(panel); root.append(backdrop); document.documentElement.append(host);
+    backdrop.append(panel);
+    if (!extensionPage) { modal=el('dialog',undefined,{'aria-label':'Titan command bar'}); modal.append(backdrop); root.append(modal); }
+    else root.append(backdrop);
+    document.documentElement.append(host);
+    if (modal && !extensionPage) { modal.addEventListener('cancel',e=>{e.preventDefault();close();}); modal.showModal(); }
     backdrop.addEventListener('click', e => { if (e.target === backdrop && !extensionPage) close(); });
     root.addEventListener('keydown', e => {
       if (e.key === 'Escape' && !settingsPage) { e.preventDefault(); close(); }
@@ -50,10 +56,19 @@
       e.stopPropagation();
     });
   }
+  // The modal makes the underlying page inert. Capture launcher keys before
+  // document-level site handlers, while retaining native text-input defaults.
+  window.addEventListener('keydown',e=>{
+    if (!host || extensionPage) return;
+    if (root.activeElement === input) inputKeydown(e);
+    if (e.key === 'Escape') {e.preventDefault();close();}
+    e.stopImmediatePropagation();
+  },true);
+  for (const type of ['keyup','keypress']) window.addEventListener(type,e=>{if(host && !extensionPage)e.stopImmediatePropagation();},true);
   function close() {
     generation++;
     if (extensionPage) { if (location.pathname.endsWith('popup.html')) window.close(); else { input.value = ''; refresh(); input.focus(); } return; }
-    host?.remove(); host = null; previousFocus?.focus?.();
+    modal?.close(); modal=null; host?.remove(); host = null; previousFocus?.focus?.();
   }
   async function open() {
     if (host) { input?.focus(); return; }
@@ -64,13 +79,16 @@
     status = el('p', '', {class:'status', role:'status'});
     panel.append(input, list, status, el('footer', '↑ ↓ navigate · Enter open · / shortcuts · Esc close · Shift+1–9 pins'));
     input.addEventListener('input', () => { render([]); status.textContent='Searching…'; pendingSearch=refresh().catch(report); });
-    input.addEventListener('keydown', e => {
+    input.addEventListener('keydown', inputKeydown);
+    input.focus();
+    pendingSearch=refresh().catch(report); await pendingSearch;
+  }
+  function inputKeydown(e) {
+      if (e.isComposing) return;
       if (['ArrowDown','ArrowUp'].includes(e.key)) { e.preventDefault(); selected = (selected + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % (rows.length || 1); highlight(); }
       if (e.key === 'Enter') { e.preventDefault(); const query=input.value; pendingSearch.then(()=>{if(host && input.value===query)run(rows[selected]);}); }
       if (!input.value && e.shiftKey && /^Digit[1-9]$/.test(e.code) && !e.ctrlKey && !e.altKey && !e.metaKey) { e.preventDefault(); send('number', {index:Number(e.code.slice(-1))-1}).then(close).catch(report); }
-    });
-    input.focus();
-    pendingSearch=refresh().catch(report); await pendingSearch;
+
   }
   function highlight() {
     [...list.querySelectorAll('.row')].forEach((node, i) => { node.classList.toggle('active', i === selected); node.setAttribute('aria-selected', String(i === selected)); if (i === selected) { input.setAttribute('aria-activedescendant', node.id); node.scrollIntoView({block:'nearest'}); } });
@@ -102,8 +120,6 @@
         if (pins.length) next.push(...pins.map(pinRow));
         else next.push({name:folder.name,url:'Empty folder · add pins in Settings',kind:'folder',group:'Folders',action:()=>send('settings')});
       }
-      const recent = await send('search', {query:''});
-      next.push(...recent.filter(r => !c.pins.some(p => p.url === r.url)).slice(0,8).map(r => ({...r,group:'Recent tabs & history'})));
       if (!next.length) status.textContent = 'Your space starts here. Type / to pin a page or create a folder.';
     } else {
       next = await send('search', {query:q});
@@ -112,6 +128,7 @@
       next[next.length-1].subtitle = next[next.length-1].url; delete next[next.length-1].url;
     }
     if (revision !== generation || !host) return;
+    list.classList.toggle('search-results', !!q && !q.startsWith('/'));
     status.textContent=next.length ? '' : (q ? 'No matching shortcuts.' : 'Your space starts here. Type / to pin a page or create a folder.'); render(next);
   }
   function render(next) {
@@ -140,8 +157,8 @@
       const label=el('label'); const check=el('input',undefined,{type:'checkbox'}); check.checked=config.settings[key]; check.onchange=()=>config.settings[key]=check.checked; label.append(check,document.createTextNode(text)); panel.append(label);
     }
     const stepLabel=el('label','Scroll distance (20–1000 pixels) '), step=field(config.settings.scrollStep,'Scroll distance'); step.type='number'; step.min='20'; step.max='1000'; step.oninput=()=>config.settings.scrollStep=Number(step.value); stepLabel.append(step); panel.append(stepLabel);
-    panel.append(el('p','Shift+T opens Titan. Shift+1–9 opens your first nine pins. j/k/h/l scroll; d/u scroll half a page; gg/G jump to top/bottom; f shows link hints; Shift+F opens hinted links in a new tab; Esc cancels.',{class:'hint'}));
-    panel.append(el('p','Shortcuts leave typing fields alone. On restricted pages or while the address bar has focus, use Alt+T or the Titan toolbar button. Change Alt+T in brave://extensions/shortcuts.',{class:'hint'}));
+    panel.append(el('p','Normal mode is the default, including in focused textboxes. Press i to enter insert mode and type on the page; Esc returns to normal mode. Titan’s own search box always accepts typing. Shift+T opens Titan in normal mode; Shift+1–9 opens pins. j/k/h/l scroll; d/u scroll half a page; gg/G jump to top/bottom; f shows link hints; Shift+F opens hinted links in a new tab.',{class:'hint'}));
+    panel.append(el('p','Disabling Vim navigation restores normal textbox typing. On restricted pages or while the address bar has focus, use Alt+T or the Titan toolbar button. Change Alt+T in brave://extensions/shortcuts.',{class:'hint'}));
     panel.append(el('p','Titan preserves Brave’s new-tab page. Use Alt+T or the toolbar button there; Brave does not allow webpage shortcuts such as Shift+T on its native new-tab page.',{class:'hint'}));
     panel.append(el('h2','Custom / shortcuts'),el('p','One shortcut per line: name: URL Optional label. These only appear under / in Titan and open the saved URL. No search templates or %s. Blank lines and # comments are allowed.',{class:'hint'}));
     const shortcuts=el('textarea',undefined,{'aria-label':'Custom slash shortcuts',spellcheck:'false',placeholder:'chatgpt: https://chatgpt.com/\nclaude: https://claude.ai/new/\ng!: https://www.google.com/ Google'});

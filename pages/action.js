@@ -45,7 +45,9 @@ const ActionPage = {
       return;
     }
 
-    document.querySelector("#optionsLink").href = chrome.runtime.getURL("pages/options.html");
+    // Titan keeps all configuration on its single settings page. Do not point this
+    // Vimium popup at the upstream options page, which is not shipped by Titan.
+    document.querySelector("#optionsLink").href = chrome.runtime.getURL("settings.html");
 
     const saveButton = document.querySelector("#save");
     saveButton.addEventListener("click", () => this.onSave());

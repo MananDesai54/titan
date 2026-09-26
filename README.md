@@ -10,6 +10,8 @@ A keyboard-first Brave extension built on Vimium 2.4.2, with an Arc-inspired lau
 4. Pin Titan from the extensions menu if you want its toolbar button.
 5. Refresh existing website tabs. Titan preserves Brave's native new-tab page. If upgrading from 0.1.0, reload Titan and close any old Titan new-tab pages; newly opened tabs use Brave's page.
 
+To open Titan's settings, click the Titan toolbar button and choose **Titan Settings**, or open `brave://extensions` → Titan → **Details** → **Extension options**. The Vimium help dialog (`?`) and exclusion dialog link to this same page.
+
 **Upgrading from standalone Titan:** export a backup first, then click Reload for Titan in `brave://extensions` and refresh all website tabs. Brave may ask you to approve the expanded permissions used by Vimium's engine. Your existing pins, folders, shortcuts and preferences are retained. Older Titan JSON backups remain supported. If an old tab behaves oddly after reload, close and reopen that tab to discard its previous content scripts.
 
 On another machine, clone `https://github.com/MananDesai54/titan.git` once the source is published, then load that directory unpacked.

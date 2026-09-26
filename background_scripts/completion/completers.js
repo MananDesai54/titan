@@ -18,6 +18,7 @@ import * as ranking from "./ranking.js";
 import { allCommands } from "../all_commands.js";
 import { Commands, RegistryEntry } from "../commands.js";
 import { RegexpCache } from "./ranking.js";
+import { parseShortcuts, safeUrl } from "../../core.js";
 
 // Set this to true to render relevancy when debugging the ranking scores.
 const showRelevancy = false;
@@ -498,6 +499,47 @@ export class HistoryCompleter {
   }
 }
 
+export class TitanCompleter {
+  async filter({ queryTerms, query }) {
+    const stored = await chrome.storage.local.get("config");
+    const config = stored.config || { pins: [], folders: [], shortcuts: "" };
+    const folderNames = new Map((config.folders || []).map((folder) => [folder.id, folder.name]));
+    const normalized = query.trim().toLowerCase();
+    const suggestions = [];
+
+    for (const pin of config.pins || []) {
+      if (!safeUrl(pin.url)) continue;
+      const folder = folderNames.get(pin.folder);
+      const title = folder ? `${folder} / ${pin.name}` : pin.name;
+      if (!normalized || ranking.matches(queryTerms, title, pin.url)) {
+        suggestions.push(new Suggestion({
+          queryTerms,
+          description: folder ? `pin · ${folder}` : "pin",
+          title,
+          url: pin.url,
+          relevancy: normalized ? 80 : 100,
+        }));
+      }
+    }
+
+    if (normalized.startsWith("/")) {
+      for (const shortcut of parseShortcuts(config.shortcuts || "")) {
+        const searchable = `/${shortcut.alias} ${shortcut.name} ${shortcut.url}`.toLowerCase();
+        if (searchable.includes(normalized)) {
+          suggestions.push(new Suggestion({
+            queryTerms,
+            description: `/${shortcut.alias}`,
+            title: shortcut.name,
+            url: shortcut.url,
+            relevancy: shortcut.alias.toLowerCase() === normalized.slice(1) ? 120 : 90,
+          }));
+        }
+      }
+    }
+    return suggestions;
+  }
+}
+
 // The domain completer is designed to match a single-word query which looks like it is a domain.
 // This supports the user experience where they quickly type a partial domain, hit tab -> enter, and
 // expect to arrive there.
@@ -744,9 +786,10 @@ export class MultiCompleter {
     // Vomnibar.activateTabSelection, where we show the list of open tabs by recency.
     const isTabCompleter = this.completers.length == 1 &&
       this.completers[0] instanceof TabCompleter;
-    if (queryTerms.length == 0 && !isTabCompleter) {
-      return [];
-    }
+    const hasTitanCompleter = this.completers.some((completer) => completer instanceof TitanCompleter);
+    // Titan's completer uses an empty query to show saved pins/folders. Keep
+    // Vimium's existing empty-query behavior for all other completer groups.
+    if (queryTerms.length == 0 && !isTabCompleter && !hasTitanCompleter) return [];
 
     const queryMatchesUserSearchEngine = searchEngineCompleter?.getUserSearchEngineForQuery(query);
 

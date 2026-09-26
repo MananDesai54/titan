@@ -1,6 +1,6 @@
 # Titan
 
-A keyboard-first Brave extension built on Vimium 2.4.2, with an Arc-inspired launcher. No build step, account, backend, or runtime packages to install. Upstream navigation, link hints, scrolling, find, visual mode and tab commands are retained; Titan supplies one launcher and one settings page. See [UPSTREAM.md](UPSTREAM.md) and [MIT-LICENSE.txt](MIT-LICENSE.txt).
+A keyboard-first Brave extension built on Vimium 2.4.2, with an Arc-inspired launcher. No build step, account, backend, or runtime packages to install. Vimium's navigation, link hints, scrolling, find, tab commands, and Vomnibar UI remain intact; Titan adds pins, folders, and slash shortcuts to that interface. See [UPSTREAM.md](UPSTREAM.md) and [MIT-LICENSE.txt](MIT-LICENSE.txt).
 
 ## Install in Brave
 
@@ -18,7 +18,7 @@ On another machine, clone `https://github.com/MananDesai54/titan.git` once the s
 
 | Key | Action |
 | --- | --- |
-| `Shift+T` | Open the unified command bar on a website |
+| `Shift+T` | Open Vimium's Vomnibar with Titan additions on a website |
 | `Alt+T` | Open the toolbar popup, including from restricted pages/address bar |
 | `/` inside Titan | Pin this page, browse pins/folders, settings, export |
 | `Shift+1` … `Shift+9` | Open/focus the first nine saved pins |
@@ -34,9 +34,9 @@ On another machine, clone `https://github.com/MananDesai54/titan.git` once the s
 | `J` / `K`, `x` / `X` | Previous/next tab, close/restore tab |
 | `?` | Show the active keyboard mappings |
 
-The empty launcher shows only pins and folders. History is queried only after you type. Search matches pins, open tabs, bookmarks and history, including older history. Five results are visible at a time (fewer on small screens); scroll or use arrow keys for the rest. The last result searches through your default browser search engine or opens a URL. Existing matching tabs are focused instead of duplicated. Number shortcuts always follow the pin order in Settings, regardless of folder.
+The empty Vomnibar shows only pins and folders. History is queried only after you type. Search matches pins, open tabs, bookmarks and history, including older history. Vimium renders the result list and keyboard interaction. Existing matching tabs are focused instead of duplicated. Number shortcuts always follow the pin order in Settings, regardless of folder.
 
-Webpages start in **normal mode**, even if a textbox has focus. Press `i` to enter **insert mode** and type; press `Esc` to return to navigation. When no editor is focused, `i` focuses the first visible editor. Titan's own search field always accepts typing. The launcher uses Vimium's authenticated extension iframe, inside a native modal that prevents page textboxes from stealing its focus.
+Webpages start in **normal mode**, even if a textbox has focus. Press `i` to enter **insert mode** and type; press `Esc` to return to navigation. When no editor is focused, `i` focuses the first visible editor. Titan's launcher uses Vimium's own authenticated Vomnibar iframe, so its focus behavior comes from Vimium.
 
 The separate default `o`, `O`, `b`, `B`, `ge`, `gE` and `:` launchers are removed. Use `Shift+T` for everything. US-layout shifted number symbols are the default pin bindings; other layouts can map their keys to `Titan.pin1` through `Titan.pin9` in Settings.
 

@@ -14,8 +14,8 @@ implementation, including its unfinished focus fixes, is preserved on the local
 Runtime customizations:
 
 - `background.js` loads Vimium's worker and bridges Titan configuration into the engine.
-- `content_scripts/titan.js` installs Titan's launcher and pin commands using Vimium's mode stack.
-- `UIComponent` hosts Titan in an authenticated extension iframe inside a native modal.
+- `content_scripts/titan.js` routes Titan's launcher and pin commands through Vimium's mode stack.
+- Titan uses Vimium's native Vomnibar UI; its pins and slash shortcuts are an additional completer.
 - Explicit insert mode replaces automatic insert-on-focus for website textboxes.
-- Titan's settings and launcher replace the upstream popup/options entry points and default split launcher bindings. Legacy source files remain for upstream tests and custom command compatibility.
+- Titan's settings replace the upstream options entry point and default split launcher bindings. Legacy source files remain for upstream tests and custom command compatibility.
 - Upstream new-tab navigation and update notifications are disabled; Brave's native new-tab page is preserved.

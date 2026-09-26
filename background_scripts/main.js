@@ -20,6 +20,7 @@ import {
   MultiCompleter,
   SearchEngineCompleter,
   TabCompleter,
+  TitanCompleter,
 } from "./completion/completers.js";
 
 // NOTE(philc): This file has many superfluous return statements in its functions, as a result of
@@ -49,6 +50,7 @@ const completionSources = {
   domains: new DomainCompleter(),
   tabs: new TabCompleter(),
   searchEngines: new SearchEngineCompleter(),
+  titan: new TitanCompleter(),
 };
 
 const completers = {
@@ -58,6 +60,7 @@ const completers = {
     completionSources.domains,
     completionSources.tabs,
     completionSources.searchEngines,
+    completionSources.titan,
   ]),
   bookmarks: new MultiCompleter([completionSources.bookmarks]),
   commands: new MultiCompleter([completionSources.commands]),

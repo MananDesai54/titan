@@ -3,5 +3,5 @@
   "version": "3.0.0",
   "private": true,
   "type": "module",
-  "scripts": {"test": "node --test tests/*.test.js", "check": "node --check ui.js && node --check content_scripts/titan.js && node --check launcher-bridge.js && node --check background.js && node --check core.js"}
+  "scripts": {"test": "node --test tests/*.test.js", "check": "node --check ui.js && node --check content_scripts/titan.js && node --check background.js && node --check core.js"}
 }

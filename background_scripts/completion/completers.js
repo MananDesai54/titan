@@ -59,6 +59,9 @@ export class Suggestion {
   // The generated HTML string for showing this suggestion in the Vomnibar.
   html;
   searchUrl;
+  // Titan launcher metadata for folder rows.
+  isTitanFolder = false;
+  titanFolderId;
 
   constructor(options) {
     Object.seal(this);
@@ -92,7 +95,14 @@ export class Suggestion {
       faviconUrl.searchParams.set("size", "16");
       faviconHtml = `<img class="icon" src="${faviconUrl.toString()}" />`;
     }
-    if (this.isCustomSearch) {
+    if (this.isTitanFolder) {
+      this.html = `\
+<div class="top-half">
+   <span class="source">folder</span>
+   <span class="title">${this.highlightQueryTerms(Utils.escapeHtml(this.title))}</span>
+ </div>\
+`;
+    } else if (this.isCustomSearch) {
       this.html = `\
 <div class="top-half">
    <span class="source ${insertTextClass}">${insertTextIndicator}</span><span class="source">${this.description}</span>
@@ -505,12 +515,31 @@ export class TitanCompleter {
     const config = stored.config || { pins: [], folders: [], shortcuts: "" };
     const folderNames = new Map((config.folders || []).map((folder) => [folder.id, folder.name]));
     const normalized = query.trim().toLowerCase();
+    const folderQuery = normalized.match(/^folder:(.+)$/);
+    const requestedFolder = folderQuery?.[1];
     const suggestions = [];
+
+    if (requestedFolder) {
+      const folder = (config.folders || []).find((entry) => entry.id === requestedFolder);
+      if (!folder) return [];
+      for (const pin of config.pins || []) {
+        if (pin.folder !== folder.id || !safeUrl(pin.url)) continue;
+        suggestions.push(new Suggestion({
+          queryTerms,
+          description: `pin · ${folder.name}`,
+          title: pin.name,
+          url: pin.url,
+          relevancy: 100,
+        }));
+      }
+      return suggestions;
+    }
 
     for (const pin of config.pins || []) {
       if (!safeUrl(pin.url)) continue;
+      if (!normalized && pin.folder) continue;
       const folder = folderNames.get(pin.folder);
-      const title = folder ? `${folder} / ${pin.name}` : pin.name;
+      const title = pin.name;
       if (!normalized || ranking.matches(queryTerms, title, pin.url)) {
         suggestions.push(new Suggestion({
           queryTerms,
@@ -534,6 +563,22 @@ export class TitanCompleter {
             relevancy: shortcut.alias.toLowerCase() === normalized.slice(1) ? 120 : 90,
           }));
         }
+      }
+    }
+
+    if (!normalized) {
+      for (const folder of config.folders || []) {
+        const pinCount = (config.pins || []).filter((pin) => pin.folder === folder.id).length;
+        suggestions.push(new Suggestion({
+          queryTerms,
+          description: `${pinCount} pin${pinCount === 1 ? "" : "s"}`,
+          title: `${folder.name}  ›`,
+          url: "",
+          isTitanFolder: true,
+          titanFolderId: folder.id,
+          relevancy: 90,
+          deDuplicate: false,
+        }));
       }
     }
     return suggestions;
@@ -795,7 +840,11 @@ export class MultiCompleter {
 
     // If the user's query matches one of their custom search engines, then use only that engine to
     // provide completions for their query.
-    const completers = queryMatchesUserSearchEngine
+    const titanFolderQuery = query.trim().toLowerCase().startsWith("folder:");
+    const emptyTitanQuery = queryTerms.length == 0 && hasTitanCompleter;
+    const completers = titanFolderQuery || emptyTitanQuery
+      ? this.completers.filter((c) => c instanceof TitanCompleter)
+      : queryMatchesUserSearchEngine
       ? [searchEngineCompleter]
       : this.completers.filter((c) => c != searchEngineCompleter);
 

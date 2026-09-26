@@ -63,6 +63,7 @@ class VomnibarUI {
     // The user's custom search engine, if they have prefixed their query with the keyword for one
     // of their search engines.
     this.activeUserSearchEngine = null;
+    this.titanFolderId = null;
     // Used for synchronizing requests and responses to the background page.
     this.lastRequestId = null;
   }
@@ -129,6 +130,7 @@ class VomnibarUI {
     this.renderCompletions(this.completions);
     this.previousInputValue = null;
     this.activeUserSearchEngine = null;
+    this.titanFolderId = null;
     this.selection = this.initialSelectionValue;
     this.seenTabToOpenCompletionList = false;
     this.lastRequestId = null;
@@ -344,6 +346,7 @@ class VomnibarUI {
   // reinstate any search engine keyword which is currently being suppressed, and strip any prompted
   // text.
   getInputValueAsQuery() {
+    if (this.titanFolderId != null) return `folder:${this.titanFolderId}`;
     const prefix = this.isUserSearchEngineActive() ? this.activeUserSearchEngine.keyword + " " : "";
     return prefix + this.input.value;
   }
@@ -397,6 +400,7 @@ class VomnibarUI {
   }
 
   onInput() {
+    this.titanFolderId = null;
     this.seenTabToOpenCompletionList = false;
     this.cancelCompletions();
 
@@ -437,6 +441,13 @@ class VomnibarUI {
   }
 
   openCompletion(completion, openInNewTab) {
+    if (completion.titanFolderId) {
+      this.titanFolderId = completion.titanFolderId;
+      this.input.value = "";
+      this.selection = -1;
+      this.update();
+      return;
+    }
     if (completion.description == "tab") {
       chrome.runtime.sendMessage({ handler: "selectSpecificTab", id: completion.tabId });
     } else {

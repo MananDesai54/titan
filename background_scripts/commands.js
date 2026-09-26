@@ -434,7 +434,7 @@ const defaultKeyMappings = {
   "V": "enterVisualLineMode",
 
   // Link hints
-  "f": "LinkHints.activateMode",
+  "f": "LinkHints.activateModeToOpenInNewTab",
   "F": "LinkHints.activateModeToOpenInNewTab",
   "<a-f>": "LinkHints.activateModeWithQueue",
   "yf": "LinkHints.activateModeToCopyLinkUrl",

@@ -31,7 +31,7 @@ On another machine, clone `https://github.com/MananDesai54/titan.git` once the s
 | `j` / `k`, `h` / `l` | Scroll down/up, left/right |
 | `d` / `u` | Scroll down/up half a viewport |
 | `gg` / `Shift+G` | Top/bottom |
-| `f` / `Shift+F` | Link hints; Shift opens links in a new tab |
+| `f` / `Shift+F` | Link hints; hinted links always open in a new tab |
 | `/` on the webpage | Vimium's find-in-page mode |
 | `J` / `K`, `x` / `X` | Previous/next tab, close/restore tab |
 | `?` | Show the active keyboard mappings |

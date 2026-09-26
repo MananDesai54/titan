@@ -20,7 +20,7 @@ On another machine, clone `https://github.com/MananDesai54/titan.git` once the s
 
 | Key | Action |
 | --- | --- |
-| `Shift+T` | Open Vimium's Vomnibar with Titan additions on a website |
+| `Shift+T` | Open Titan's Vimium-style launcher; selected results always open in a new tab |
 | `Alt+T` | Open the toolbar popup, including from restricted pages/address bar |
 | `/` inside Titan | Pin this page, browse pins/folders, settings, export |
 | `Shift+1` … `Shift+9` | Open/focus the first nine saved pins |

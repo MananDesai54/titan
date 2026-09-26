@@ -62,7 +62,7 @@ async function handle(m, sender) {
       if (!m.query?.trim()) return;
       return chrome.search.query({text: m.query, disposition: (m.newTab ?? c.settings.newTab) ? 'NEW_TAB' : 'CURRENT_TAB'});
     }
-    case 'number': { const c = await config(); const p = c.pins[m.index]; if (p) return handle({type: 'go', url: p.url}, sender); return; }
+    case 'number': { const c = await config(); const p = c.pins[m.index]; if (p) return handle({type: 'go', url: p.url, newTab: true}, sender); return; }
     case 'settings': return chrome.runtime.openOptionsPage();
     default: throw Error('Unknown Titan command.');
   }

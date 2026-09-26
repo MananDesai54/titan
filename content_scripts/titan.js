@@ -1,6 +1,8 @@
 const TitanLauncher = {
   activate(sourceFrameId) {
-    Vomnibar.activate(sourceFrameId, {});
+    // Titan's launcher is an Arc-style switcher: selecting anything should preserve
+    // the current page and open the destination in a new tab.
+    Vomnibar.activate(sourceFrameId, {newTab: true});
   },
 };
 NormalModeCommands['Titan.activate']=TitanLauncher.activate.bind(TitanLauncher);

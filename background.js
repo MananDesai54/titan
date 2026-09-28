@@ -8,7 +8,7 @@ async function syncNavigation(c) {
     scrollStepSize:c.settings.scrollStep, smoothScroll:c.navigation.smoothScroll,
     linkHintCharacters:c.navigation.linkHintCharacters, titanVimEnabled:c.settings.vim,
     newTabDestination:'browserNewTabPage', openVomnibarOnNewTabPage:false,
-    exclusionRules:[], hideUpdateNotifications:true, searchEngines:''});
+    hideUpdateNotifications:true, searchEngines:''});
   await Commands.loadKeyMappings(c.navigation.keyMappings);
 }
 const ready = config().then(syncNavigation);

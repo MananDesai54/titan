@@ -45,6 +45,8 @@ The separate default `o`, `O`, `b`, `B`, `ge`, `gE` and `:` launchers are remove
 
 Open **Settings** from Titan or the extension's **Details → Extension options**. All preferences, folders, pin names/URLs/order and JSON backup/restore are on this one page. Save applies the draft; Discard reloads the saved configuration. Deleting a folder moves its pins out of the folder. Export downloads the saved configuration; import validates a file and loads it as a draft, then Save applies it. Keep a backup before replacing existing configuration.
 
+To disable Titan on the current site, click the Titan toolbar button and choose **Exclude Titan keys on this page**. Add or remove the URL rule, then click **Save changes**. Rules remain available after extension reloads.
+
 The same page includes Vimium-style custom key mappings, link-hint letters and smooth scrolling. For example, `map s scrollDown`, `map <a-space> Titan.activate`, or `unmap x`. Invalid mappings are rejected when saving. All of these settings are included in Titan's configuration export.
 
 ### Custom slash shortcuts

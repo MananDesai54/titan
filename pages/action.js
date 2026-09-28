@@ -46,7 +46,7 @@ const ActionPage = {
     }
 
     // Titan keeps all configuration on its single settings page. Do not point this
-    // Vimium popup at the upstream options page, which is not shipped by Titan.
+    // Do not point this popup at the upstream Vimium options page, which is not shipped by Titan.
     document.querySelector("#optionsLink").href = chrome.runtime.getURL("settings.html");
 
     const saveButton = document.querySelector("#save");
@@ -133,7 +133,7 @@ const ActionPage = {
     // Remove any rules which match the current URL, and replace them with the contents of this dialog.
     rules = rules.filter((r) => !this.tabUrl.match(this.getPatternRegExp(r.pattern)));
     rules = rules.concat(ExclusionRulesEditor.getRules());
-    Settings.set("exclusionRules", rules);
+    await Settings.set("exclusionRules", rules);
     const el = document.querySelector("#save");
     el.disabled = true;
     el.textContent = "Saved";

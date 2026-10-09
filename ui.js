@@ -8,6 +8,19 @@
     if (!result?.ok) throw Error(result?.error || 'Titan is unavailable. Reload this page after updating the extension.');
     return result.value;
   };
+  // Mirrors fuzzyScore in core.js; this script is injected as a classic script and cannot import it.
+  const fuzzyScore = (query, text) => {
+    const haystack = String(text).toLowerCase();
+    let total = 1;
+    for (const term of String(query).toLowerCase().split(/\s+/).filter(Boolean)) {
+      if (haystack.includes(term)) { total += 2; continue; }
+      let i = 0;
+      for (const ch of haystack) if (ch === term[i]) i++;
+      if (i < term.length) return 0;
+      total += 1;
+    }
+    return total;
+  };
   const el = (tag, text, attrs = {}) => {
     const node = document.createElement(tag);
     if (text !== undefined) node.textContent = text;
@@ -95,7 +108,8 @@
         {name:'Export configuration', url:'Download pins, folders and preferences as JSON', kind:'command', action:async () => exportConfig(await send('config'))},
         ...c.pins.map((p,i) => ({...p, kind:'pin', label:i < 9 ? `⇧${i+1}` : 'pin'})),
         ...c.folders.map(f => ({name:f.name, url:'Browse folder', kind:'folder', action:() => { input.value=''; render(c.pins.filter(p => p.folder === f.id).map(p => ({...p,kind:'pin'}))); }}))
-      ].filter(r => r.name.toLowerCase().includes(q.slice(1).toLowerCase()));
+      ].map(r => ({r, score:fuzzyScore(q.slice(1), `${r.name} ${r.kind === 'pin' ? `${r.url} ${c.folders.find(f => f.id === r.folder)?.name || ''}` : ''}`)}))
+        .filter(x => x.score > 0).sort((a,b) => b.score - a.score).map(x => x.r);
       const shortcuts = await send('shortcuts', {query:q});
       next.unshift(...shortcuts.map(s=>({...s, name:`/${s.alias}${s.name !== s.alias ? ` · ${s.name}` : ''}`})));
     } else if (!q) {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {defaults, validateConfig, destination, safeUrl, rank, parseShortcuts, shortcutResults} from '../core.js';
+import {defaults, validateConfig, destination, safeUrl, rank, parseShortcuts, shortcutResults, fuzzyScore} from '../core.js';
 
 test('direct slash shortcuts support labels, punctuation, comments and query parameters', () => {
   const text='# Work\ng!: https://google.com/ Google\n\nstaging_grafana: https://example.com/?client_id=abc%3Adef&state=x Grafana';
@@ -41,4 +41,13 @@ test('search matches all terms across name and URL and prioritizes pins', () => 
   const items=[{name:'Titan',url:'https://github.com/titan',kind:'history'},{name:'Titan',url:'https://github.com/titan',kind:'pin'},{name:'Other',url:'https://example.com',kind:'tab'}];
   assert.deepEqual(rank(items,'titan github').map(x=>x.kind),['pin','history']);
   assert.deepEqual(rank(items,'missing'),[]);
+});
+
+test('slash results match fuzzily and prefer substrings', () => {
+  const text='staging_aws: https://a.com/\nprod_aws: https://b.com/ Prod\ngh: https://github.com/';
+  assert.deepEqual(shortcutResults(text,'/aws').map(x=>x.alias),['staging_aws','prod_aws']);
+  assert.deepEqual(shortcutResults(text,'/stgaws').map(x=>x.alias),['staging_aws']);
+  assert.deepEqual(shortcutResults(text,'/prod aws').map(x=>x.alias),['prod_aws']);
+  assert.equal(fuzzyScore('xyz','staging_aws'),0);
+  assert.ok(fuzzyScore('aws','staging_aws') > fuzzyScore('sws','staging_aws'));
 });

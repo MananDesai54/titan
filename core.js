@@ -15,11 +15,25 @@ export function parseShortcuts(text = '') {
     return [{alias, name: label || alias, url: safeUrl(url), kind: 'shortcut'}];
   });
 }
+// Scores how well every whitespace-separated query term matches `text`: substrings score higher
+// than in-order subsequences (e.g. "stgaws" in "staging_aws"). Returns 0 when any term misses.
+export function fuzzyScore(query, text) {
+  const haystack = String(text).toLowerCase();
+  let total = 1;
+  for (const term of String(query).toLowerCase().split(/\s+/).filter(Boolean)) {
+    if (haystack.includes(term)) { total += 2; continue; }
+    let i = 0;
+    for (const ch of haystack) if (ch === term[i]) i++;
+    if (i < term.length) return 0;
+    total += 1;
+  }
+  return total;
+}
 export function shortcutResults(text, query) {
   if (!query.startsWith('/')) return [];
   const q = query.slice(1).trim().toLowerCase();
-  return parseShortcuts(text).filter(x => `${x.alias} ${x.name} ${x.url}`.toLowerCase().includes(q))
-    .sort((a,b) => Number(b.alias.toLowerCase() === q) - Number(a.alias.toLowerCase() === q));
+  const score = x => fuzzyScore(q, `${x.alias} ${x.name} ${x.url}`) + (x.alias.toLowerCase() === q ? 100 : 0);
+  return parseShortcuts(text).filter(x => score(x) > 0).sort((a,b) => score(b) - score(a));
 }
 export function safeUrl(value) {
   try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) ? url.href : null; } catch { return null; }

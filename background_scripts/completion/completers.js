@@ -18,7 +18,7 @@ import * as ranking from "./ranking.js";
 import { allCommands } from "../all_commands.js";
 import { Commands, RegistryEntry } from "../commands.js";
 import { RegexpCache } from "./ranking.js";
-import { parseShortcuts, safeUrl } from "../../core.js";
+import { fuzzyScore, parseShortcuts, safeUrl } from "../../core.js";
 
 // Set this to true to render relevancy when debugging the ranking scores.
 const showRelevancy = false;
@@ -524,13 +524,15 @@ export class TitanCompleter {
       if (!folder) return [];
       for (const pin of config.pins || []) {
         if (pin.folder !== folder.id || !safeUrl(pin.url)) continue;
-        suggestions.push(new Suggestion({
-          queryTerms,
-          description: `pin · ${folder.name}`,
-          title: pin.name,
-          url: pin.url,
-          relevancy: 100,
-        }));
+        suggestions.push(
+          new Suggestion({
+            queryTerms,
+            description: `pin · ${folder.name}`,
+            title: pin.name,
+            url: pin.url,
+            relevancy: 100,
+          }),
+        );
       }
       return suggestions;
     }
@@ -541,27 +543,35 @@ export class TitanCompleter {
       const folder = folderNames.get(pin.folder);
       const title = pin.name;
       if (!normalized || ranking.matches(queryTerms, title, pin.url)) {
-        suggestions.push(new Suggestion({
-          queryTerms,
-          description: folder ? `pin · ${folder}` : "pin",
-          title,
-          url: pin.url,
-          relevancy: normalized ? 80 : 100,
-        }));
+        suggestions.push(
+          new Suggestion({
+            queryTerms,
+            description: folder ? `pin · ${folder}` : "pin",
+            title,
+            url: pin.url,
+            relevancy: normalized ? 80 : 100,
+          }),
+        );
       }
     }
 
     if (normalized.startsWith("/")) {
+      const shortcutQuery = normalized.slice(1).trim();
       for (const shortcut of parseShortcuts(config.shortcuts || "")) {
-        const searchable = `/${shortcut.alias} ${shortcut.name} ${shortcut.url}`.toLowerCase();
-        if (searchable.includes(normalized)) {
-          suggestions.push(new Suggestion({
-            queryTerms,
-            description: `/${shortcut.alias}`,
-            title: shortcut.name,
-            url: shortcut.url,
-            relevancy: shortcut.alias.toLowerCase() === normalized.slice(1) ? 120 : 90,
-          }));
+        const score = fuzzyScore(
+          shortcutQuery,
+          `${shortcut.alias} ${shortcut.name} ${shortcut.url}`,
+        );
+        if (score > 0) {
+          suggestions.push(
+            new Suggestion({
+              queryTerms,
+              description: `/${shortcut.alias}`,
+              title: shortcut.name,
+              url: shortcut.url,
+              relevancy: shortcut.alias.toLowerCase() === shortcutQuery ? 120 : 80 + score,
+            }),
+          );
         }
       }
     }
@@ -569,16 +579,18 @@ export class TitanCompleter {
     if (!normalized) {
       for (const folder of config.folders || []) {
         const pinCount = (config.pins || []).filter((pin) => pin.folder === folder.id).length;
-        suggestions.push(new Suggestion({
-          queryTerms,
-          description: `${pinCount} pin${pinCount === 1 ? "" : "s"}`,
-          title: `${folder.name}  ›`,
-          url: "",
-          isTitanFolder: true,
-          titanFolderId: folder.id,
-          relevancy: 90,
-          deDuplicate: false,
-        }));
+        suggestions.push(
+          new Suggestion({
+            queryTerms,
+            description: `${pinCount} pin${pinCount === 1 ? "" : "s"}`,
+            title: `${folder.name}  ›`,
+            url: "",
+            isTitanFolder: true,
+            titanFolderId: folder.id,
+            relevancy: 90,
+            deDuplicate: false,
+          }),
+        );
       }
     }
     return suggestions;
@@ -831,7 +843,9 @@ export class MultiCompleter {
     // Vomnibar.activateTabSelection, where we show the list of open tabs by recency.
     const isTabCompleter = this.completers.length == 1 &&
       this.completers[0] instanceof TabCompleter;
-    const hasTitanCompleter = this.completers.some((completer) => completer instanceof TitanCompleter);
+    const hasTitanCompleter = this.completers.some((completer) =>
+      completer instanceof TitanCompleter
+    );
     // Titan's completer uses an empty query to show saved pins/folders. Keep
     // Vimium's existing empty-query behavior for all other completer groups.
     if (queryTerms.length == 0 && !isTabCompleter && !hasTitanCompleter) return [];

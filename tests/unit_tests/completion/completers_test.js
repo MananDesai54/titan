@@ -15,6 +15,7 @@ import {
   SearchEngineCompleter,
   Suggestion,
   TabCompleter,
+  TitanCompleter,
 } from "../../../background_scripts/completion/completers.js";
 import "../../../lib/url_utils.js";
 import { Commands, RegistryEntry } from "../../../background_scripts/commands.js";
@@ -365,6 +366,32 @@ context("multi completer", () => {
     assert.equal(2, results.length);
     assert.equal("http://example.com", results[0].url);
     assert.equal("http://other.com", results[1].url);
+  });
+});
+
+context("titan completer", () => {
+  const titanCompleter = new TitanCompleter();
+  const shortcuts = "prod_aws: https://prod.example.com/\n" +
+    "staging_aws: https://staging.example.com/ AWS staging\n" +
+    "gh: https://github.com/";
+
+  const shortcutAliases = async (query) => {
+    stub(
+      chrome.storage.local,
+      "get",
+      withPromise(() => ({ config: { pins: [], folders: [], shortcuts } })),
+    );
+    const suggestions = await titanCompleter.filter({ query, queryTerms: query.split(/\s+/) });
+    return suggestions.map((s) => s.description).sort();
+  };
+
+  should("match slash shortcuts by any part of the alias", async () => {
+    assert.equal(["/prod_aws", "/staging_aws"], await shortcutAliases("/aws"));
+  });
+
+  should("match slash shortcuts fuzzily", async () => {
+    assert.equal(["/staging_aws"], await shortcutAliases("/stgaws"));
+    assert.equal([], await shortcutAliases("/xyz"));
   });
 });
 

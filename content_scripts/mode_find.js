@@ -147,9 +147,8 @@ class FindMode extends Mode {
     // find the right match as the user adds matching characters, or removes previously-matched
     // characters. See #1434.
     this.restoreSelection();
-    query = FindMode.query.isRegex
-      ? FindMode.getQueryFromRegexMatches()
-      : FindMode.query.parsedQuery;
+    // Fuzzy matches can be longer than the query, so always find using the matched text.
+    query = FindMode.getQueryFromRegexMatches();
     FindMode.query.hasResults = FindMode.execute(query, options);
   }
 
@@ -187,7 +186,7 @@ class FindMode extends Mode {
 
     const regexPattern = this.query.isRegex
       ? this.query.parsedQuery
-      : Utils.escapeRegexSpecialCharacters(this.query.parsedQuery);
+      : Utils.fuzzyRegexSource(this.query.parsedQuery);
 
     // Grep for all matches in every text node,
     // so we can show a the number of results.

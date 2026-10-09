@@ -208,3 +208,30 @@ context("assertType", () => {
     Utils.assertType({ bool: "boolean" }, { bool: null });
   });
 });
+
+context("fuzzyRegexSource", () => {
+  const fuzzyMatch = (query, text) => {
+    const match = text.match(new RegExp(Utils.fuzzyRegexSource(query), "i"));
+    return match ? match[0] : null;
+  };
+
+  should("match exact substrings", () => {
+    assert.equal("hello", fuzzyMatch("hello", "say hello there"));
+  });
+
+  should("match letters in order within a word", () => {
+    assert.equal("hello", fuzzyMatch("hlo", "say hello there"));
+  });
+
+  should("not match letters spread across words", () => {
+    assert.equal(null, fuzzyMatch("hlo", "ha, la, oh"));
+  });
+
+  should("match multiple terms across nearby words", () => {
+    assert.equal("hello, world", fuzzyMatch("hlo wrd", "say hello, world"));
+  });
+
+  should("escape regex special characters", () => {
+    assert.equal("a.b", fuzzyMatch("a.b", "axb a.b"));
+  });
+});
